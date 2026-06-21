@@ -139,6 +139,25 @@
     text-align: center;
   }
   .notice a { color: var(--text); cursor: pointer; text-decoration: underline; }
+  .about {
+    background: var(--panel);
+    border-radius: 14px;
+    padding: 4px 20px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .about summary {
+    cursor: pointer;
+    padding: 14px 0;
+    color: var(--text);
+    font-weight: 600;
+    list-style: none;
+  }
+  .about summary::-webkit-details-marker { display: none; }
+  .about summary::before { content: "▸ "; color: var(--muted); }
+  .about[open] summary::before { content: "▾ "; }
+  .about p { margin: 0 0 12px; line-height: 1.7; }
+  .about strong { color: var(--text); }
 </style>
 </head>
 <body>
@@ -180,6 +199,13 @@
 
     <div class="notice" id="notice"></div>
     <div class="notice">ショートカット: Space=開始/一時停止 ・ Esc=アラーム停止 ・ R=リセット</div>
+
+    <details class="about">
+      <summary>このアプリについて</summary>
+      <p>集中と休憩を交互に繰り返して作業に集中するための<strong>ポモドーロ・タイマー</strong>です。短い集中（例 25分）と休憩（例 5分）をくり返すことで、無理なく長時間の作業を続けられます。</p>
+      <p>時間になると<strong>アラームが鳴り、止めるまで鳴り続けます</strong>。止め忘れた時間は「オーバー時間」として記録されるので、ダラけた時間が一目で分かります。止めると自動で次（集中⇄休憩）へ切り替わります。</p>
+      <p>今日の<strong>集中・休憩・オーバー時間とポモドーロ回数</strong>を自動集計（日付が変わるとリセット）。記録はこのブラウザ内だけに保存され、他の人からは見えません。</p>
+    </details>
   </div>
 
 <script>
