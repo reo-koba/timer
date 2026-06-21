@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ポモドーロタイマー</title>
+<style>
+  :root {
+    --bg: #1c2030;
+    --panel: #262b3d;
+    --focus: #ff6b6b;
+    --break: #38d39f;
+    --text: #e8ecf4;
+    --muted: #8a92a8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .app {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .timer-card {
+    background: var(--panel);
+    border-radius: 18px;
+    padding: 32px 24px;
+    text-align: center;
+    transition: box-shadow .3s;
+  }
+  .timer-card.alarming {
+    animation: pulse 0.8s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,107,107,0); }
+    50% { box-shadow: 0 0 0 8px rgba(255,107,107,.35); }
+  }
+  .phase {
+    font-size: 15px;
+    letter-spacing: .15em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .phase.focus { color: var(--focus); }
+  .phase.break { color: var(--break); }
+  .time {
+    font-size: 72px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    margin: 8px 0;
+  }
+  .overrun {
+    font-size: 16px;
+    color: var(--focus);
+    font-variant-numeric: tabular-nums;
+    min-height: 20px;
+  }
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 22px;
+  }
+  button {
+    flex: 1;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    background: #353c52;
+    cursor: pointer;
+    transition: background .15s, transform .05s;
+  }
+  button:hover { background: #404863; }
+  button:active { transform: scale(.97); }
+  button.primary { background: var(--focus); color: #1c2030; }
+  button.primary.break { background: var(--break); }
+  button:disabled { opacity: .4; cursor: default; }
+  .stop-alarm { background: var(--focus); color: #1c2030; }
+
+  .settings, .stats {
+    background: var(--panel);
+    border-radius: 14px;
+    padding: 18px 20px;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+  }
+  .row label { color: var(--muted); font-size: 14px; }
+  .row input {
+    width: 90px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #3a4159;
+    background: #1c2030;
+    color: var(--text);
+    font-size: 15px;
+    text-align: right;
+  }
+  .stats h2, .settings h2 {
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .stat {
+    background: #1c2030;
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+  }
+  .stat .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat .k { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .stat.over .v { color: var(--focus); }
+  .notice {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+  }
+  .notice a { color: var(--text); cursor: pointer; text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="timer-card" id="card">
+      <div class="phase" id="phaseLabel">集中</div>
+      <div class="time" id="time">25:00</div>
+      <div class="overrun" id="overrun"></div>
+      <div class="controls">
+        <button class="primary" id="startBtn">開始</button>
+        <button id="resetBtn">リセット</button>
+      </div>
+      <div class="controls" id="alarmControls" style="display:none">
+        <button class="stop-alarm" id="stopAlarmBtn">アラームを止める</button>
+      </div>
+    </div>
+
+    <div class="settings">
+      <h2>設定（分）</h2>
+      <div class="row">
+        <label for="focusMin">集中</label>
+        <input type="number" id="focusMin" min="0.05" step="1" value="25">
+      </div>
+      <div class="row">
+        <label for="breakMin">休憩</label>
+        <input type="number" id="breakMin" min="0.05" step="1" value="5">
+      </div>
+    </div>
+
+    <div class="stats">
+      <h2>今日の記録</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="v" id="sFocus">0分</div><div class="k">集中時間</div></div>
+        <div class="stat"><div class="v" id="sBreak">0分</div><div class="k">休憩時間</div></div>
+        <div class="stat over"><div class="v" id="sOver">0秒</div><div class="k">オーバー時間</div></div>
+        <div class="stat"><div class="v" id="sCount">0</div><div class="k">ポモドーロ回数</div></div>
+      </div>
+    </div>
+
+    <div class="notice" id="notice"></div>
+    <div class="notice">ショートカット: Space=開始/一時停止 ・ Esc=アラーム停止 ・ R=リセット</div>
+  </div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- 永続化 ----------
+  const SETTINGS_KEY = "pomo_settings";
+  const STATS_KEY = "pomo_stats";
+
+  const todayStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  };
+
+  const loadSettings = () => {
+    try {
+      const s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+      if (s && s.focusMin > 0 && s.breakMin > 0) return s;
+    } catch (_) {}
+    return { focusMin: 25, breakMin: 5 };
+  };
+  const saveSettings = () => localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+
+  const freshStats = () => ({ date: todayStr(), focusSec: 0, breakSec: 0, overrunSec: 0, count: 0 });
+  const loadStats = () => {
+    try {
+      const s = JSON.parse(localStorage.getItem(STATS_KEY));
+      if (s && s.date === todayStr()) return s;
+    } catch (_) {}
+    return freshStats();
+  };
+  const saveStats = () => localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+  const rolloverIfNeeded = () => {
+    if (stats.date !== todayStr()) { stats = freshStats(); saveStats(); renderStats(); }
+  };
+
+  // ---------- 状態 ----------
+  let settings = loadSettings();
+  let stats = loadStats();
+  let phase = "focus";              // 'focus' | 'break'
+  let status = "idle";              // 'idle' | 'running' | 'paused' | 'alarming'
+  let targetTime = 0;               // running時の目標時刻(ms)
+  let remainingMs = phaseDurationMs(); // paused/idle時の残り
+  let overrunStart = 0;             // アラーム開始時刻(ms)
+
+  // ---------- DOM ----------
+  const $ = (id) => document.getElementById(id);
+  const card = $("card"), phaseLabel = $("phaseLabel"), timeEl = $("time"), overrunEl = $("overrun");
+  const startBtn = $("startBtn"), resetBtn = $("resetBtn");
+  const alarmControls = $("alarmControls"), stopAlarmBtn = $("stopAlarmBtn");
+  const focusInput = $("focusMin"), breakInput = $("breakMin");
+  const noticeEl = $("notice");
+
+  focusInput.value = settings.focusMin;
+  breakInput.value = settings.breakMin;
+
+  function phaseDurationMs(p = phase) {
+    return Math.round((p === "focus" ? settings.focusMin : settings.breakMin) * 60 * 1000);
+  }
+
+  // ---------- アラーム音 (Web Audio) ----------
+  let audioCtx = null;
+  let beepTimer = null;
+
+  function ensureAudio() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  }
+
+  function beep() {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.4, audioCtx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.35);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.36);
+  }
+
+  function startAlarm() {
+    beep();
+    beepTimer = setInterval(beep, 900);
+  }
+  function stopBeep() {
+    if (beepTimer) { clearInterval(beepTimer); beepTimer = null; }
+  }
+
+  // ---------- 通知 ----------
+  function notifyAlarm() {
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    const title = phase === "focus" ? "集中終了！" : "休憩終了！";
+    try {
+      new Notification(title, { body: "アラームを止めてください", tag: "pomodoro" });
+    } catch (_) {}
+  }
+
+  function setupNotice() {
+    if (!("Notification" in window)) { noticeEl.textContent = ""; return; }
+    if (Notification.permission === "granted") { noticeEl.textContent = "デスクトップ通知: 有効"; return; }
+    if (Notification.permission === "denied") { noticeEl.textContent = "デスクトップ通知: ブロック中"; return; }
+    noticeEl.innerHTML = '<a id="notifyLink">デスクトップ通知を許可する</a>';
+    $("notifyLink").addEventListener("click", () => {
+      Notification.requestPermission().then(setupNotice);
+    });
+  }
+
+  // ---------- 描画 ----------
+  function fmt(ms) {
+    const total = Math.max(0, Math.round(ms / 1000));
+    const m = Math.floor(total / 60), s = total % 60;
+    return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  }
+  function fmtDuration(sec) {
+    if (sec < 60) return `${sec}秒`;
+    const m = Math.floor(sec / 60);
+    return `${m}分`;
+  }
+
+  function renderStats() {
+    $("sFocus").textContent = fmtDuration(stats.focusSec);
+    $("sBreak").textContent = fmtDuration(stats.breakSec);
+    $("sOver").textContent = fmtDuration(stats.overrunSec);
+    $("sCount").textContent = String(stats.count);
+  }
+
+  function render() {
+    const isFocus = phase === "focus";
+    phaseLabel.textContent = isFocus ? "集中" : "休憩";
+    phaseLabel.className = "phase " + (isFocus ? "focus" : "break");
+    startBtn.classList.toggle("break", !isFocus);
+
+    let remaining = status === "running" ? targetTime - Date.now() : remainingMs;
+    if (status === "alarming") remaining = 0;
+    timeEl.textContent = fmt(remaining);
+
+    if (status === "alarming") {
+      const over = Math.floor((Date.now() - overrunStart) / 1000);
+      overrunEl.textContent = `オーバー +${fmtDuration(over)}`;
+      card.classList.add("alarming");
+      alarmControls.style.display = "flex";
+      startBtn.disabled = true;
+      resetBtn.disabled = true;
+    } else {
+      overrunEl.textContent = "";
+      card.classList.remove("alarming");
+      alarmControls.style.display = "none";
+      startBtn.disabled = false;
+      resetBtn.disabled = false;
+      startBtn.textContent = status === "running" ? "一時停止" : "開始";
+    }
+
+    // タブタイトル
+    if (status === "alarming") {
+      document.title = `⏰ ${isFocus ? "集中" : "休憩"}終了 - ポモドーロ`;
+    } else if (status === "running") {
+      document.title = `${fmt(remaining)} ${isFocus ? "集中" : "休憩"} - ポモドーロ`;
+    } else {
+      document.title = "ポモドーロタイマー";
+    }
+  }
+
+  // ---------- 制御 ----------
+  function start() {
+    if (status === "alarming") return;
+    ensureAudio();
+    targetTime = Date.now() + remainingMs;
+    status = "running";
+    render();
+  }
+  function pause() {
+    if (status !== "running") return;
+    remainingMs = Math.max(0, targetTime - Date.now());
+    status = "paused";
+    render();
+  }
+  function toggleStartPause() {
+    if (status === "running") pause();
+    else if (status === "idle" || status === "paused") start();
+  }
+  function reset() {
+    if (status === "alarming") return;
+    status = "idle";
+    remainingMs = phaseDurationMs();
+    render();
+  }
+
+  function triggerAlarm() {
+    status = "alarming";
+    overrunStart = Date.now();
+    rolloverIfNeeded();
+    startAlarm();
+    notifyAlarm();
+    render();
+  }
+
+  function stopAlarm() {
+    if (status !== "alarming") return;
+    stopBeep();
+    rolloverIfNeeded();
+    // 完了したフェーズを集計
+    const overSec = Math.floor((Date.now() - overrunStart) / 1000);
+    if (phase === "focus") {
+      stats.focusSec += Math.round(settings.focusMin * 60);
+      stats.count += 1;
+    } else {
+      stats.breakSec += Math.round(settings.breakMin * 60);
+    }
+    stats.overrunSec += overSec;
+    saveStats();
+    renderStats();
+    // 次フェーズへ自動遷移（status を解除してから start）
+    phase = phase === "focus" ? "break" : "focus";
+    remainingMs = phaseDurationMs();
+    status = "idle";
+    start();
+  }
+
+  // ---------- tick ----------
+  setInterval(() => {
+    rolloverIfNeeded();
+    if (status === "running" && Date.now() >= targetTime) {
+      triggerAlarm();
+    } else {
+      render();
+    }
+  }, 250);
+
+  // ---------- イベント ----------
+  startBtn.addEventListener("click", toggleStartPause);
+  resetBtn.addEventListener("click", reset);
+  stopAlarmBtn.addEventListener("click", stopAlarm);
+
+  function onSettingChange() {
+    const f = parseFloat(focusInput.value);
+    const b = parseFloat(breakInput.value);
+    settings.focusMin = (f > 0) ? f : settings.focusMin;
+    settings.breakMin = (b > 0) ? b : settings.breakMin;
+    saveSettings();
+    if (status === "idle") { remainingMs = phaseDurationMs(); render(); }
+  }
+  focusInput.addEventListener("change", onSettingChange);
+  breakInput.addEventListener("change", onSettingChange);
+
+  document.addEventListener("keydown", (e) => {
+    if (e.target.tagName === "INPUT") return;
+    if (e.code === "Space") { e.preventDefault(); toggleStartPause(); }
+    else if (e.code === "Escape") { stopAlarm(); }
+    else if (e.key === "r" || e.key === "R") { reset(); }
+  });
+
+  // ---------- 初期化 ----------
+  setupNotice();
+  renderStats();
+  render();
+})();
+</script>
+</body>
+</html>
