@@ -6,12 +6,16 @@
 <title>ポモドーロタイマー</title>
 <style>
   :root {
-    --bg: #1c2030;
-    --panel: #262b3d;
-    --focus: #ff6b6b;
-    --break: #38d39f;
-    --text: #e8ecf4;
-    --muted: #8a92a8;
+    --bg:#1c2030; --panel:#262b3d; --text:#e8ecf4; --muted:#8a92a8;
+    --accent:#ff6b6b; --accent2:#38d39f; --btn:#353c52; --btn-hover:#404863;
+    --field:#1c2030; --border:#3a4159; --on-accent:#1c2030; --shadow:none;
+    --track:#333a52; --card-shadow:0 18px 50px -24px rgba(0,0,0,.7);
+  }
+  [data-theme="light"] {
+    --bg:#eef1f8; --panel:#ffffff; --text:#1f2433; --muted:#6b7388;
+    --accent:#e8553e; --accent2:#13a07a; --btn:#eef1f8; --btn-hover:#e2e7f2;
+    --field:#f4f6fb; --border:#dbe1ed; --on-accent:#ffffff; --shadow:0 1px 3px rgba(20,30,60,.08);
+    --track:#e4e9f3; --card-shadow:0 18px 50px -28px rgba(40,60,120,.35);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -23,148 +27,119 @@
     align-items: center;
     justify-content: center;
     padding: 24px;
+    transition: background .2s, color .2s;
   }
-  .app {
-    width: 100%;
-    max-width: 420px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+  .app { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 16px; }
+
+  .topbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .lang-sel {
+    background: var(--field); color: var(--text); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 10px; font-size: 14px; cursor: pointer; max-width: 60%;
   }
+  .icon-btn {
+    flex: 0 0 auto; width: 44px; height: 38px; padding: 0;
+    background: var(--btn); border-radius: 10px; font-size: 18px; cursor: pointer;
+  }
+
   .timer-card {
-    background: var(--panel);
-    border-radius: 18px;
-    padding: 32px 24px;
-    text-align: center;
-    transition: box-shadow .3s;
-  }
-  .timer-card.alarming {
-    animation: pulse 0.8s ease-in-out infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(255,107,107,0); }
-    50% { box-shadow: 0 0 0 8px rgba(255,107,107,.35); }
+    background: var(--panel); border-radius: 22px; padding: 28px 24px 26px; text-align: center;
+    box-shadow: var(--card-shadow);
   }
   .phase {
-    font-size: 15px;
-    letter-spacing: .15em;
-    color: var(--muted);
-    text-transform: uppercase;
+    font-size: 13px; letter-spacing: .22em; color: var(--muted); text-transform: uppercase;
+    font-weight: 700; transition: color .3s;
   }
-  .phase.focus { color: var(--focus); }
-  .phase.break { color: var(--break); }
-  .time {
-    font-size: 72px;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    line-height: 1.1;
-    margin: 8px 0;
-  }
-  .overrun {
-    font-size: 16px;
-    color: var(--focus);
-    font-variant-numeric: tabular-nums;
-    min-height: 20px;
-  }
-  .controls {
-    display: flex;
-    gap: 10px;
-    margin-top: 22px;
-  }
-  button {
-    flex: 1;
-    border: none;
-    border-radius: 12px;
-    padding: 14px 8px;
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text);
-    background: #353c52;
-    cursor: pointer;
-    transition: background .15s, transform .05s;
-  }
-  button:hover { background: #404863; }
-  button:active { transform: scale(.97); }
-  button.primary { background: var(--focus); color: #1c2030; }
-  button.primary.break { background: var(--break); }
-  button:disabled { opacity: .4; cursor: default; }
-  .stop-alarm { background: var(--focus); color: #1c2030; }
+  .phase.focus { color: var(--accent); }
+  .phase.break { color: var(--accent2); }
 
-  .settings, .stats {
-    background: var(--panel);
-    border-radius: 14px;
-    padding: 18px 20px;
+  /* 円形プログレスリング */
+  .dial {
+    --p: 0%; --ring: var(--accent);
+    position: relative; width: min(258px, 62vw); aspect-ratio: 1; margin: 16px auto 8px;
+    border-radius: 50%;
+    background: conic-gradient(var(--ring) var(--p), var(--track) 0);
+    display: flex; align-items: center; justify-content: center;
+    transition: background .35s linear, box-shadow .35s;
+    box-shadow: 0 12px 38px -14px var(--ring);
   }
-  .row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 6px 0;
+  .dial::before {
+    content: ""; position: absolute; inset: 15px; border-radius: 50%;
+    background: var(--panel); transition: background .2s;
   }
+  .timer-card.alarming .dial { animation: pulse 0.85s ease-in-out infinite; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 var(--ring), 0 12px 38px -14px var(--ring); }
+    50% { box-shadow: 0 0 0 10px transparent, 0 0 26px 2px var(--ring); }
+  }
+  .dial-inner { position: relative; z-index: 1; }
+  .time { font-size: clamp(42px, 14vw, 60px); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; line-height: 1; }
+  .overrun { font-size: 15px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; min-height: 20px; }
+
+  .controls { display: flex; gap: 10px; margin-top: 20px; }
+  button {
+    flex: 1; border: none; border-radius: 13px; padding: 15px 8px;
+    font-size: 15px; font-weight: 600; color: var(--text); background: var(--btn);
+    cursor: pointer; transition: background .15s, transform .06s, box-shadow .15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:active { transform: scale(.97); }
+  button.primary { background: var(--accent); color: var(--on-accent); box-shadow: 0 8px 20px -8px var(--accent); }
+  button.primary.break { background: var(--accent2); box-shadow: 0 8px 20px -8px var(--accent2); }
+  button.primary:hover { filter: brightness(1.05); background: var(--accent); }
+  button.primary.break:hover { background: var(--accent2); }
+  button:disabled { opacity: .4; cursor: default; box-shadow: none; }
+  .stop-alarm { background: var(--accent); color: var(--on-accent); box-shadow: 0 8px 20px -8px var(--accent); }
+
+  .settings, .stats { background: var(--panel); border-radius: 14px; padding: 18px 20px; box-shadow: var(--shadow); }
+  .row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; }
   .row label { color: var(--muted); font-size: 14px; }
   .row input {
-    width: 90px;
-    padding: 8px 10px;
-    border-radius: 8px;
-    border: 1px solid #3a4159;
-    background: #1c2030;
-    color: var(--text);
-    font-size: 15px;
-    text-align: right;
+    width: 90px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--field); color: var(--text); font-size: 15px; text-align: right;
   }
-  .stats h2, .settings h2 {
-    font-size: 13px;
-    color: var(--muted);
-    letter-spacing: .1em;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-  }
-  .stat-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-  .stat {
-    background: #1c2030;
-    border-radius: 10px;
-    padding: 12px;
-    text-align: center;
-  }
-  .stat .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .stat .k { font-size: 12px; color: var(--muted); margin-top: 4px; }
-  .stat.over .v { color: var(--focus); }
-  .notice {
-    font-size: 12px;
-    color: var(--muted);
-    text-align: center;
-  }
+  .stats h2, .settings h2 { font-size: 13px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 10px; }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .stat { background: var(--field); border: 1px solid var(--border); border-radius: 12px; padding: 14px 10px; text-align: center; }
+  .stat .icon { display: flex; justify-content: center; height: 22px; color: var(--muted); }
+  .stat .icon svg { width: 22px; height: 22px; }
+  .stat.over .icon { color: var(--accent); }
+  .stat .v { font-size: 23px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 5px; }
+  .stat .k { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+  .stat.over .v { color: var(--accent); }
+
+  .notice { font-size: 12px; color: var(--muted); text-align: center; }
   .notice a { color: var(--text); cursor: pointer; text-decoration: underline; }
-  .about {
-    background: var(--panel);
-    border-radius: 14px;
-    padding: 4px 20px;
-    font-size: 14px;
-    color: var(--muted);
-  }
-  .about summary {
-    cursor: pointer;
-    padding: 14px 0;
-    color: var(--text);
-    font-weight: 600;
-    list-style: none;
-  }
+
+  .about { background: var(--panel); border-radius: 14px; padding: 4px 20px; font-size: 14px; color: var(--muted); box-shadow: var(--shadow); }
+  .about summary { cursor: pointer; padding: 14px 0; color: var(--text); font-weight: 600; list-style: none; }
   .about summary::-webkit-details-marker { display: none; }
   .about summary::before { content: "▸ "; color: var(--muted); }
   .about[open] summary::before { content: "▾ "; }
-  .about p { margin: 0 0 12px; line-height: 1.7; }
-  .about strong { color: var(--text); }
+  .about p { margin: 0 0 14px; line-height: 1.7; }
+  [dir="rtl"] .about summary::before { content: "◂ "; }
+  [dir="rtl"] .about[open] summary::before { content: "▾ "; }
+
+  @media (max-width: 480px) {
+    body { padding: 16px; }
+    .timer-card { padding: 24px 18px; }
+    .stat .v { font-size: 20px; }
+  }
 </style>
 </head>
 <body>
   <div class="app">
+    <div class="topbar">
+      <select id="langSel" class="lang-sel" aria-label="Language"></select>
+      <button id="themeBtn" class="icon-btn" title="theme">🌙</button>
+    </div>
+
     <div class="timer-card" id="card">
       <div class="phase" id="phaseLabel">集中</div>
-      <div class="time" id="time">25:00</div>
+      <div class="dial" id="dial">
+        <div class="dial-inner">
+          <div class="time" id="time">25:00</div>
+        </div>
+      </div>
       <div class="overrun" id="overrun"></div>
       <div class="controls">
         <button class="primary" id="startBtn">開始</button>
@@ -176,35 +151,45 @@
     </div>
 
     <div class="settings">
-      <h2>設定（分）</h2>
+      <h2 id="setTitle">設定（分）</h2>
       <div class="row">
-        <label for="focusMin">集中</label>
+        <label for="focusMin" id="focusRowLabel">集中</label>
         <input type="number" id="focusMin" min="0.05" step="1" value="25">
       </div>
       <div class="row">
-        <label for="breakMin">休憩</label>
+        <label for="breakMin" id="breakRowLabel">休憩</label>
         <input type="number" id="breakMin" min="0.05" step="1" value="5">
       </div>
     </div>
 
     <div class="stats">
-      <h2>今日の記録</h2>
+      <h2 id="statsTitle">今日の記録</h2>
       <div class="stat-grid">
-        <div class="stat"><div class="v" id="sFocus">0分</div><div class="k">集中時間</div></div>
-        <div class="stat"><div class="v" id="sBreak">0分</div><div class="k">休憩時間</div></div>
-        <div class="stat over"><div class="v" id="sOver">0秒</div><div class="k">オーバー時間</div></div>
-        <div class="stat"><div class="v" id="sCount">0</div><div class="k">ポモドーロ回数</div></div>
+        <div class="stat">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></div>
+          <div class="v" id="sFocus">0</div><div class="k" id="sFocusK">集中時間</div>
+        </div>
+        <div class="stat">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V9z"/><path d="M16 10h2.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3.5v2M11 3.5v2"/></svg></div>
+          <div class="v" id="sBreak">0</div><div class="k" id="sBreakK">休憩時間</div>
+        </div>
+        <div class="stat over">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></div>
+          <div class="v" id="sOver">0</div><div class="k" id="sOverK">オーバー時間</div>
+        </div>
+        <div class="stat">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.2l2.3 2.3 4.2-4.6"/></svg></div>
+          <div class="v" id="sCount">0</div><div class="k" id="sCountK">ポモドーロ回数</div>
+        </div>
       </div>
     </div>
 
     <div class="notice" id="notice"></div>
-    <div class="notice">ショートカット: Space=開始/一時停止 ・ Esc=アラーム停止 ・ R=リセット</div>
+    <div class="notice" id="shortcuts"></div>
 
     <details class="about">
-      <summary>このアプリについて</summary>
-      <p>集中と休憩を交互に繰り返して作業に集中するための<strong>ポモドーロ・タイマー</strong>です。短い集中（例 25分）と休憩（例 5分）をくり返すことで、無理なく長時間の作業を続けられます。</p>
-      <p>時間になると<strong>アラームが鳴り、止めるまで鳴り続けます</strong>。止め忘れた時間は「オーバー時間」として記録されるので、ダラけた時間が一目で分かります。止めると自動で次（集中⇄休憩）へ切り替わります。</p>
-      <p>今日の<strong>集中・休憩・オーバー時間とポモドーロ回数</strong>を自動集計（日付が変わるとリセット）。記録はこのブラウザ内だけに保存され、他の人からは見えません。</p>
+      <summary id="aboutSummary">このアプリについて</summary>
+      <p id="aboutText"></p>
     </details>
   </div>
 
@@ -212,9 +197,102 @@
 (() => {
   "use strict";
 
+  // ---------- 多言語辞書 ----------
+  const LANGS = {
+    ja: { name:"日本語", dir:"ltr", focus:"集中", break:"休憩", start:"開始", pause:"一時停止", reset:"リセット",
+      stopAlarm:"アラームを止める", settingsTitle:"設定（分）", statsTitle:"今日の記録",
+      statFocus:"集中時間", statBreak:"休憩時間", statOver:"オーバー時間", statCount:"ポモドーロ回数",
+      shortcuts:"ショートカット: Space=開始/一時停止 ・ Esc=アラーム停止 ・ R=リセット",
+      aboutSummary:"このアプリについて",
+      aboutText:"集中と休憩をくり返して作業に集中するためのポモドーロ・タイマーです。時間になるとアラームが鳴り、止めるまで鳴り続けます。止め忘れた時間は「オーバー時間」として記録され、今日の集中・休憩・オーバー時間とポモドーロ回数を自動集計します。記録はこのブラウザ内だけに保存され、他の人からは見えません。",
+      notifyEnable:"デスクトップ通知を許可する", notifyOn:"デスクトップ通知: 有効", notifyBlocked:"デスクトップ通知: ブロック中",
+      notifTitleFocus:"集中終了！", notifTitleBreak:"休憩終了！", notifBody:"アラームを止めてください",
+      overrunPrefix:"オーバー +", docApp:"ポモドーロタイマー", unitMin:"分", unitSec:"秒" },
+    en: { name:"English", dir:"ltr", focus:"Focus", break:"Break", start:"Start", pause:"Pause", reset:"Reset",
+      stopAlarm:"Stop alarm", settingsTitle:"Settings (min)", statsTitle:"Today",
+      statFocus:"Focus time", statBreak:"Break time", statOver:"Overrun", statCount:"Pomodoros",
+      shortcuts:"Shortcuts: Space = start/pause · Esc = stop alarm · R = reset",
+      aboutSummary:"About this app",
+      aboutText:"A Pomodoro timer for staying focused by alternating focus and break sessions. When time is up the alarm keeps ringing until you stop it; the time you leave it running is logged as “overrun”. Your focus, break and overrun time and pomodoro count for today are tracked automatically. Records are stored only in this browser and are not visible to anyone else.",
+      notifyEnable:"Enable desktop notifications", notifyOn:"Notifications: on", notifyBlocked:"Notifications: blocked",
+      notifTitleFocus:"Focus done!", notifTitleBreak:"Break over!", notifBody:"Please stop the alarm",
+      overrunPrefix:"Over +", docApp:"Pomodoro Timer", unitMin:"min", unitSec:"sec" },
+    zh: { name:"中文", dir:"ltr", focus:"专注", break:"休息", start:"开始", pause:"暂停", reset:"重置",
+      stopAlarm:"停止闹钟", settingsTitle:"设置（分钟）", statsTitle:"今日记录",
+      statFocus:"专注时间", statBreak:"休息时间", statOver:"超时时间", statCount:"番茄数",
+      shortcuts:"快捷键: Space=开始/暂停 · Esc=停止闹钟 · R=重置",
+      aboutSummary:"关于此应用",
+      aboutText:"番茄钟计时器，通过交替进行专注和休息来保持高效。时间到时闹钟会持续响起，直到你手动停止；未及时停止的时间会记为“超时”。今天的专注、休息、超时时间和番茄数会自动统计。记录仅保存在本浏览器中，他人无法看到。",
+      notifyEnable:"允许桌面通知", notifyOn:"桌面通知: 开启", notifyBlocked:"桌面通知: 已屏蔽",
+      notifTitleFocus:"专注结束！", notifTitleBreak:"休息结束！", notifBody:"请停止闹钟",
+      overrunPrefix:"超时 +", docApp:"番茄钟", unitMin:"分", unitSec:"秒" },
+    ko: { name:"한국어", dir:"ltr", focus:"집중", break:"휴식", start:"시작", pause:"일시정지", reset:"초기화",
+      stopAlarm:"알람 끄기", settingsTitle:"설정(분)", statsTitle:"오늘 기록",
+      statFocus:"집중 시간", statBreak:"휴식 시간", statOver:"초과 시간", statCount:"뽀모도로 횟수",
+      shortcuts:"단축키: Space=시작/일시정지 · Esc=알람 끄기 · R=초기화",
+      aboutSummary:"앱 정보",
+      aboutText:"집중과 휴식을 번갈아 반복하며 작업에 집중하기 위한 뽀모도로 타이머입니다. 시간이 되면 알람이 멈출 때까지 계속 울리며, 멈추지 않은 시간은 ‘초과 시간’으로 기록됩니다. 오늘의 집중·휴식·초과 시간과 뽀모도로 횟수가 자동으로 집계됩니다. 기록은 이 브라우저에만 저장되어 다른 사람은 볼 수 없습니다.",
+      notifyEnable:"데스크톱 알림 허용", notifyOn:"데스크톱 알림: 켜짐", notifyBlocked:"데스크톱 알림: 차단됨",
+      notifTitleFocus:"집중 종료!", notifTitleBreak:"휴식 종료!", notifBody:"알람을 꺼 주세요",
+      overrunPrefix:"초과 +", docApp:"뽀모도로 타이머", unitMin:"분", unitSec:"초" },
+    th: { name:"ไทย", dir:"ltr", focus:"สมาธิ", break:"พัก", start:"เริ่ม", pause:"หยุดชั่วคราว", reset:"รีเซ็ต",
+      stopAlarm:"หยุดเสียงเตือน", settingsTitle:"ตั้งค่า (นาที)", statsTitle:"วันนี้",
+      statFocus:"เวลาสมาธิ", statBreak:"เวลาพัก", statOver:"เวลาเกิน", statCount:"จำนวนรอบ",
+      shortcuts:"ปุ่มลัด: Space=เริ่ม/หยุด · Esc=หยุดเสียง · R=รีเซ็ต",
+      aboutSummary:"เกี่ยวกับแอป",
+      aboutText:"ตัวจับเวลาแบบโพโมโดโรสำหรับการมีสมาธิ โดยสลับช่วงทำงานและช่วงพัก เมื่อหมดเวลา เสียงเตือนจะดังจนกว่าคุณจะกดหยุด เวลาที่ปล่อยไว้จะถูกบันทึกเป็น “เวลาเกิน” ระบบจะรวมเวลาทำงาน เวลาพัก เวลาเกิน และจำนวนรอบของวันนี้ให้อัตโนมัติ ข้อมูลถูกเก็บไว้ในเบราว์เซอร์นี้เท่านั้น ผู้อื่นมองไม่เห็น",
+      notifyEnable:"อนุญาตการแจ้งเตือนเดสก์ท็อป", notifyOn:"การแจ้งเตือน: เปิด", notifyBlocked:"การแจ้งเตือน: ถูกบล็อก",
+      notifTitleFocus:"หมดเวลาสมาธิ!", notifTitleBreak:"หมดเวลาพัก!", notifBody:"กรุณาหยุดเสียงเตือน",
+      overrunPrefix:"เกิน +", docApp:"ตัวจับเวลาโพโมโดโร", unitMin:"นาที", unitSec:"วินาที" },
+    es: { name:"Español", dir:"ltr", focus:"Enfoque", break:"Descanso", start:"Iniciar", pause:"Pausar", reset:"Reiniciar",
+      stopAlarm:"Detener alarma", settingsTitle:"Ajustes (min)", statsTitle:"Hoy",
+      statFocus:"Tiempo de enfoque", statBreak:"Tiempo de descanso", statOver:"Tiempo extra", statCount:"Pomodoros",
+      shortcuts:"Atajos: Space = iniciar/pausar · Esc = detener alarma · R = reiniciar",
+      aboutSummary:"Acerca de la app",
+      aboutText:"Un temporizador Pomodoro para concentrarte alternando sesiones de enfoque y descanso. Cuando se acaba el tiempo, la alarma suena hasta que la detienes; el tiempo que tardas se registra como “tiempo extra”. Tu tiempo de enfoque, descanso y extra y el número de pomodoros de hoy se calculan automáticamente. Los datos se guardan solo en este navegador y nadie más puede verlos.",
+      notifyEnable:"Activar notificaciones", notifyOn:"Notificaciones: activadas", notifyBlocked:"Notificaciones: bloqueadas",
+      notifTitleFocus:"¡Enfoque terminado!", notifTitleBreak:"¡Descanso terminado!", notifBody:"Detén la alarma, por favor",
+      overrunPrefix:"Extra +", docApp:"Temporizador Pomodoro", unitMin:"min", unitSec:"s" },
+    ar: { name:"العربية", dir:"rtl", focus:"تركيز", break:"استراحة", start:"بدء", pause:"إيقاف مؤقت", reset:"إعادة ضبط",
+      stopAlarm:"إيقاف المنبّه", settingsTitle:"الإعدادات (دقائق)", statsTitle:"اليوم",
+      statFocus:"وقت التركيز", statBreak:"وقت الاستراحة", statOver:"الوقت الزائد", statCount:"عدد الجلسات",
+      shortcuts:"اختصارات: Space = بدء/إيقاف · Esc = إيقاف المنبّه · R = إعادة ضبط",
+      aboutSummary:"حول التطبيق",
+      aboutText:"مؤقّت بومودورو للتركيز عبر التناوب بين فترات العمل والاستراحة. عند انتهاء الوقت يستمر المنبّه في الرنين حتى توقفه، ويُسجَّل الوقت الذي تتركه يعمل باعتباره «وقتًا زائدًا». يُحسب تلقائيًا وقت التركيز والاستراحة والوقت الزائد وعدد جلسات بومودورو لهذا اليوم. تُحفظ البيانات في هذا المتصفّح فقط ولا يراها أحد غيرك.",
+      notifyEnable:"تفعيل إشعارات سطح المكتب", notifyOn:"الإشعارات: مُفعّلة", notifyBlocked:"الإشعارات: محظورة",
+      notifTitleFocus:"انتهى التركيز!", notifTitleBreak:"انتهت الاستراحة!", notifBody:"يرجى إيقاف المنبّه",
+      overrunPrefix:"زائد +", docApp:"مؤقّت بومودورو", unitMin:"د", unitSec:"ث" },
+    de: { name:"Deutsch", dir:"ltr", focus:"Fokus", break:"Pause", start:"Start", pause:"Pause", reset:"Zurücksetzen",
+      stopAlarm:"Alarm stoppen", settingsTitle:"Einstellungen (Min)", statsTitle:"Heute",
+      statFocus:"Fokuszeit", statBreak:"Pausenzeit", statOver:"Überzeit", statCount:"Pomodoros",
+      shortcuts:"Tastenkürzel: Space = Start/Pause · Esc = Alarm stoppen · R = Zurücksetzen",
+      aboutSummary:"Über die App",
+      aboutText:"Ein Pomodoro-Timer, um durch abwechselnde Fokus- und Pausenphasen konzentriert zu bleiben. Wenn die Zeit abgelaufen ist, klingelt der Alarm, bis du ihn stoppst; die Zeit bis dahin wird als „Überzeit“ erfasst. Deine Fokus-, Pausen- und Überzeit sowie die Anzahl der Pomodoros für heute werden automatisch erfasst. Die Daten werden nur in diesem Browser gespeichert und sind für niemanden sonst sichtbar.",
+      notifyEnable:"Benachrichtigungen aktivieren", notifyOn:"Benachrichtigungen: an", notifyBlocked:"Benachrichtigungen: blockiert",
+      notifTitleFocus:"Fokus beendet!", notifTitleBreak:"Pause beendet!", notifBody:"Bitte den Alarm stoppen",
+      overrunPrefix:"Über +", docApp:"Pomodoro-Timer", unitMin:"Min", unitSec:"Sek" },
+    fr: { name:"Français", dir:"ltr", focus:"Concentration", break:"Pause", start:"Démarrer", pause:"Pause", reset:"Réinitialiser",
+      stopAlarm:"Arrêter l’alarme", settingsTitle:"Réglages (min)", statsTitle:"Aujourd’hui",
+      statFocus:"Temps de concentration", statBreak:"Temps de pause", statOver:"Dépassement", statCount:"Pomodoros",
+      shortcuts:"Raccourcis : Space = démarrer/pause · Esc = arrêter l’alarme · R = réinitialiser",
+      aboutSummary:"À propos",
+      aboutText:"Un minuteur Pomodoro pour rester concentré en alternant sessions de travail et de pause. Quand le temps est écoulé, l’alarme sonne jusqu’à ce que vous l’arrêtiez ; le temps écoulé est enregistré comme « dépassement ». Vos temps de concentration, de pause et de dépassement ainsi que le nombre de pomodoros du jour sont comptabilisés automatiquement. Les données sont stockées uniquement dans ce navigateur et ne sont visibles par personne d’autre.",
+      notifyEnable:"Activer les notifications", notifyOn:"Notifications : activées", notifyBlocked:"Notifications : bloquées",
+      notifTitleFocus:"Concentration terminée !", notifTitleBreak:"Pause terminée !", notifBody:"Veuillez arrêter l’alarme",
+      overrunPrefix:"Dépassement +", docApp:"Minuteur Pomodoro", unitMin:"min", unitSec:"s" },
+    sym: { name:"Symbols ●○", dir:"ltr", focus:"●", break:"○", start:"▶", pause:"‖", reset:"↺",
+      stopAlarm:"■", settingsTitle:"◷", statsTitle:"▦",
+      statFocus:"●", statBreak:"○", statOver:"◷", statCount:"✓",
+      shortcuts:"Space ▶/‖  ·  Esc ■  ·  R ↺",
+      aboutSummary:"?",
+      aboutText:"●  ▶ → ♪ → ■  →  ○  ▶ → ♪ → ■  →  ↺          ◷ = ♪ +",
+      notifyEnable:"♪ ?", notifyOn:"♪ ✓", notifyBlocked:"♪ ✕",
+      notifTitleFocus:"● ✓", notifTitleBreak:"○ ✓", notifBody:"■",
+      overrunPrefix:"◷ +", docApp:"●", unitMin:"′", unitSec:"″" }
+  };
+
   // ---------- 永続化 ----------
-  const SETTINGS_KEY = "pomo_settings";
-  const STATS_KEY = "pomo_stats";
+  const SETTINGS_KEY = "pomo_settings", STATS_KEY = "pomo_stats", LANG_KEY = "pomo_lang", THEME_KEY = "pomo_theme";
 
   const todayStr = () => {
     const d = new Date();
@@ -222,20 +300,14 @@
   };
 
   const loadSettings = () => {
-    try {
-      const s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
-      if (s && s.focusMin > 0 && s.breakMin > 0) return s;
-    } catch (_) {}
+    try { const s = JSON.parse(localStorage.getItem(SETTINGS_KEY)); if (s && s.focusMin > 0 && s.breakMin > 0) return s; } catch (_) {}
     return { focusMin: 25, breakMin: 5 };
   };
   const saveSettings = () => localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 
   const freshStats = () => ({ date: todayStr(), focusSec: 0, breakSec: 0, overrunSec: 0, count: 0 });
   const loadStats = () => {
-    try {
-      const s = JSON.parse(localStorage.getItem(STATS_KEY));
-      if (s && s.date === todayStr()) return s;
-    } catch (_) {}
+    try { const s = JSON.parse(localStorage.getItem(STATS_KEY)); if (s && s.date === todayStr()) return s; } catch (_) {}
     return freshStats();
   };
   const saveStats = () => localStorage.setItem(STATS_KEY, JSON.stringify(stats));
@@ -243,14 +315,22 @@
     if (stats.date !== todayStr()) { stats = freshStats(); saveStats(); renderStats(); }
   };
 
+  const detectLang = () => {
+    const saved = localStorage.getItem(LANG_KEY);
+    if (saved && LANGS[saved]) return saved;
+    const code = (navigator.language || "en").slice(0,2).toLowerCase();
+    return LANGS[code] ? code : "en";
+  };
+
   // ---------- 状態 ----------
   let settings = loadSettings();
   let stats = loadStats();
+  let L = LANGS[detectLang()];
   let phase = "focus";              // 'focus' | 'break'
   let status = "idle";              // 'idle' | 'running' | 'paused' | 'alarming'
-  let targetTime = 0;               // running時の目標時刻(ms)
-  let remainingMs = phaseDurationMs(); // paused/idle時の残り
-  let overrunStart = 0;             // アラーム開始時刻(ms)
+  let targetTime = 0;
+  let remainingMs;
+  let overrunStart = 0;
 
   // ---------- DOM ----------
   const $ = (id) => document.getElementById(id);
@@ -258,66 +338,95 @@
   const startBtn = $("startBtn"), resetBtn = $("resetBtn");
   const alarmControls = $("alarmControls"), stopAlarmBtn = $("stopAlarmBtn");
   const focusInput = $("focusMin"), breakInput = $("breakMin");
-  const noticeEl = $("notice");
+  const noticeEl = $("notice"), langSel = $("langSel"), themeBtn = $("themeBtn"), dial = $("dial");
 
   focusInput.value = settings.focusMin;
   breakInput.value = settings.breakMin;
+  remainingMs = phaseDurationMs();
 
   function phaseDurationMs(p = phase) {
     return Math.round((p === "focus" ? settings.focusMin : settings.breakMin) * 60 * 1000);
   }
 
-  // ---------- アラーム音 (Web Audio) ----------
-  let audioCtx = null;
-  let beepTimer = null;
-
-  function ensureAudio() {
-    if (!audioCtx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) audioCtx = new AC();
-    }
-    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  // ---------- テーマ ----------
+  function applyTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    themeBtn.textContent = t === "light" ? "☀️" : "🌙";
+    localStorage.setItem(THEME_KEY, t);
+  }
+  function toggleTheme() {
+    applyTheme(document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light");
   }
 
+  // ---------- 言語 ----------
+  function buildLangSelector() {
+    Object.keys(LANGS).forEach((code) => {
+      const opt = document.createElement("option");
+      opt.value = code; opt.textContent = LANGS[code].name;
+      langSel.appendChild(opt);
+    });
+  }
+  function applyStaticI18n() {
+    $("setTitle").textContent = L.settingsTitle;
+    $("focusRowLabel").textContent = L.focus;
+    $("breakRowLabel").textContent = L.break;
+    $("statsTitle").textContent = L.statsTitle;
+    $("sFocusK").textContent = L.statFocus;
+    $("sBreakK").textContent = L.statBreak;
+    $("sOverK").textContent = L.statOver;
+    $("sCountK").textContent = L.statCount;
+    $("shortcuts").textContent = L.shortcuts;
+    $("aboutSummary").textContent = L.aboutSummary;
+    $("aboutText").textContent = L.aboutText;
+    resetBtn.textContent = L.reset;
+    stopAlarmBtn.textContent = L.stopAlarm;
+  }
+  function applyLang(code) {
+    L = LANGS[code];
+    localStorage.setItem(LANG_KEY, code);
+    document.documentElement.lang = code === "sym" ? "en" : code;
+    document.documentElement.dir = L.dir;
+    langSel.value = code;
+    applyStaticI18n();
+    setupNotice();
+    renderStats();
+    render();
+  }
+
+  // ---------- アラーム音 (Web Audio) ----------
+  let audioCtx = null, beepTimer = null;
+  function ensureAudio() {
+    if (!audioCtx) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); }
+    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  }
   function beep() {
     if (!audioCtx) return;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = 880;
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.type = "sine"; osc.frequency.value = 880;
     gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.4, audioCtx.currentTime + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.35);
     osc.connect(gain).connect(audioCtx.destination);
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.36);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.36);
   }
-
-  function startAlarm() {
-    beep();
-    beepTimer = setInterval(beep, 900);
-  }
-  function stopBeep() {
-    if (beepTimer) { clearInterval(beepTimer); beepTimer = null; }
-  }
+  function startAlarm() { beep(); beepTimer = setInterval(beep, 900); }
+  function stopBeep() { if (beepTimer) { clearInterval(beepTimer); beepTimer = null; } }
 
   // ---------- 通知 ----------
   function notifyAlarm() {
     if (!("Notification" in window) || Notification.permission !== "granted") return;
-    const title = phase === "focus" ? "集中終了！" : "休憩終了！";
-    try {
-      new Notification(title, { body: "アラームを止めてください", tag: "pomodoro" });
-    } catch (_) {}
+    const title = phase === "focus" ? L.notifTitleFocus : L.notifTitleBreak;
+    try { new Notification(title, { body: L.notifBody, tag: "pomodoro" }); } catch (_) {}
   }
-
   function setupNotice() {
     if (!("Notification" in window)) { noticeEl.textContent = ""; return; }
-    if (Notification.permission === "granted") { noticeEl.textContent = "デスクトップ通知: 有効"; return; }
-    if (Notification.permission === "denied") { noticeEl.textContent = "デスクトップ通知: ブロック中"; return; }
-    noticeEl.innerHTML = '<a id="notifyLink">デスクトップ通知を許可する</a>';
-    $("notifyLink").addEventListener("click", () => {
-      Notification.requestPermission().then(setupNotice);
-    });
+    if (Notification.permission === "granted") { noticeEl.textContent = L.notifyOn; return; }
+    if (Notification.permission === "denied") { noticeEl.textContent = L.notifyBlocked; return; }
+    noticeEl.innerHTML = "";
+    const a = document.createElement("a");
+    a.textContent = L.notifyEnable;
+    a.addEventListener("click", () => Notification.requestPermission().then(setupNotice));
+    noticeEl.appendChild(a);
   }
 
   // ---------- 描画 ----------
@@ -327,21 +436,18 @@
     return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
   }
   function fmtDuration(sec) {
-    if (sec < 60) return `${sec}秒`;
-    const m = Math.floor(sec / 60);
-    return `${m}分`;
+    if (sec < 60) return `${sec}${L.unitSec}`;
+    return `${Math.floor(sec / 60)}${L.unitMin}`;
   }
-
   function renderStats() {
     $("sFocus").textContent = fmtDuration(stats.focusSec);
     $("sBreak").textContent = fmtDuration(stats.breakSec);
     $("sOver").textContent = fmtDuration(stats.overrunSec);
     $("sCount").textContent = String(stats.count);
   }
-
   function render() {
     const isFocus = phase === "focus";
-    phaseLabel.textContent = isFocus ? "集中" : "休憩";
+    phaseLabel.textContent = isFocus ? L.focus : L.break;
     phaseLabel.className = "phase " + (isFocus ? "focus" : "break");
     startBtn.classList.toggle("break", !isFocus);
 
@@ -349,30 +455,32 @@
     if (status === "alarming") remaining = 0;
     timeEl.textContent = fmt(remaining);
 
+    // プログレスリング更新
+    const total = phaseDurationMs();
+    let p = total > 0 ? 1 - remaining / total : 0;
+    p = Math.max(0, Math.min(1, p));
+    if (status === "alarming") p = 1;
+    dial.style.setProperty("--p", (p * 100).toFixed(1) + "%");
+    dial.style.setProperty("--ring", isFocus ? "var(--accent)" : "var(--accent2)");
+
     if (status === "alarming") {
       const over = Math.floor((Date.now() - overrunStart) / 1000);
-      overrunEl.textContent = `オーバー +${fmtDuration(over)}`;
+      overrunEl.textContent = `${L.overrunPrefix}${fmtDuration(over)}`;
       card.classList.add("alarming");
       alarmControls.style.display = "flex";
-      startBtn.disabled = true;
-      resetBtn.disabled = true;
+      startBtn.disabled = true; resetBtn.disabled = true;
     } else {
       overrunEl.textContent = "";
       card.classList.remove("alarming");
       alarmControls.style.display = "none";
-      startBtn.disabled = false;
-      resetBtn.disabled = false;
-      startBtn.textContent = status === "running" ? "一時停止" : "開始";
+      startBtn.disabled = false; resetBtn.disabled = false;
+      startBtn.textContent = status === "running" ? L.pause : L.start;
     }
 
-    // タブタイトル
-    if (status === "alarming") {
-      document.title = `⏰ ${isFocus ? "集中" : "休憩"}終了 - ポモドーロ`;
-    } else if (status === "running") {
-      document.title = `${fmt(remaining)} ${isFocus ? "集中" : "休憩"} - ポモドーロ`;
-    } else {
-      document.title = "ポモドーロタイマー";
-    }
+    const phaseWord = isFocus ? L.focus : L.break;
+    if (status === "alarming") document.title = `⏰ ${L.docApp}`;
+    else if (status === "running") document.title = `${fmt(remaining)} ${phaseWord} – ${L.docApp}`;
+    else document.title = L.docApp;
   }
 
   // ---------- 制御 ----------
@@ -399,7 +507,6 @@
     remainingMs = phaseDurationMs();
     render();
   }
-
   function triggerAlarm() {
     status = "alarming";
     overrunStart = Date.now();
@@ -408,19 +515,13 @@
     notifyAlarm();
     render();
   }
-
   function stopAlarm() {
     if (status !== "alarming") return;
     stopBeep();
     rolloverIfNeeded();
-    // 完了したフェーズを集計
     const overSec = Math.floor((Date.now() - overrunStart) / 1000);
-    if (phase === "focus") {
-      stats.focusSec += Math.round(settings.focusMin * 60);
-      stats.count += 1;
-    } else {
-      stats.breakSec += Math.round(settings.breakMin * 60);
-    }
+    if (phase === "focus") { stats.focusSec += Math.round(settings.focusMin * 60); stats.count += 1; }
+    else { stats.breakSec += Math.round(settings.breakMin * 60); }
     stats.overrunSec += overSec;
     saveStats();
     renderStats();
@@ -434,21 +535,19 @@
   // ---------- tick ----------
   setInterval(() => {
     rolloverIfNeeded();
-    if (status === "running" && Date.now() >= targetTime) {
-      triggerAlarm();
-    } else {
-      render();
-    }
+    if (status === "running" && Date.now() >= targetTime) triggerAlarm();
+    else render();
   }, 250);
 
   // ---------- イベント ----------
   startBtn.addEventListener("click", toggleStartPause);
   resetBtn.addEventListener("click", reset);
   stopAlarmBtn.addEventListener("click", stopAlarm);
+  themeBtn.addEventListener("click", toggleTheme);
+  langSel.addEventListener("change", (e) => applyLang(e.target.value));
 
   function onSettingChange() {
-    const f = parseFloat(focusInput.value);
-    const b = parseFloat(breakInput.value);
+    const f = parseFloat(focusInput.value), b = parseFloat(breakInput.value);
     settings.focusMin = (f > 0) ? f : settings.focusMin;
     settings.breakMin = (b > 0) ? b : settings.breakMin;
     saveSettings();
@@ -458,16 +557,17 @@
   breakInput.addEventListener("change", onSettingChange);
 
   document.addEventListener("keydown", (e) => {
-    if (e.target.tagName === "INPUT") return;
+    if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
     if (e.code === "Space") { e.preventDefault(); toggleStartPause(); }
     else if (e.code === "Escape") { stopAlarm(); }
     else if (e.key === "r" || e.key === "R") { reset(); }
   });
 
   // ---------- 初期化 ----------
-  setupNotice();
+  buildLangSelector();
+  applyTheme(localStorage.getItem(THEME_KEY) === "light" ? "light" : "dark");
+  applyLang(detectLang());
   renderStats();
-  render();
 })();
 </script>
 </body>
