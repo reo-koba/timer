@@ -1,0 +1,9 @@
+# Claude Code / ローカル開発設定
+.claude/
+
+# macOS
+.DS_Store
+
+# エディタ
+.vscode/
+.idea/
